@@ -486,21 +486,18 @@ function extractCriterios(blocoText, numCriterios){
 }
 
 /* ── PARSE PRINCIPAL ── */
-// Ao carregar a página, verifica se veio texto via URL ou localStorage
-window.addEventListener('load', function(){
-  const params = new URLSearchParams(window.location.search);
-  
-  // Prioridade 1: via localStorage (enviado pelo Apps Script)
-  const dadosLocal = localStorage.getItem('monitoria_dados');
-  if(params.get('via')==='script' && dadosLocal && dadosLocal.trim()){
-    localStorage.removeItem('monitoria_dados'); // limpa após usar
-    document.getElementById('pasteInput').value = dadosLocal;
+// Recebe dados enviados via postMessage (do Apps Script)
+window.addEventListener('message', function(event){
+  if(event.data && event.data.tipo === 'monitoria_dados' && event.data.texto){
+    document.getElementById('pasteInput').value = event.data.texto;
     parseText();
     showToast('✅ Dados carregados automaticamente do Google Docs!','success');
-    return;
   }
+});
 
-  // Prioridade 2: via parâmetro ?dados= na URL
+// Ao carregar a página, verifica se veio texto via URL (?dados=...)
+window.addEventListener('load', function(){
+  const params = new URLSearchParams(window.location.search);
   const dados = params.get('dados');
   if(dados && dados.trim()){
     document.getElementById('pasteInput').value = dados;
