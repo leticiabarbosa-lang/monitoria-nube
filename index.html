@@ -557,11 +557,10 @@ function parseBloco(bloco,prefix,critId,critPrefix){
             ||bloco.match(/Data:\s*(\d{2}\/\d{2}\/\d{4})/i);
   if(datL) document.getElementById(`${prefix}data`).value=datL[1].trim();
 
-  // Histórico — aceita "Informações do histórico:", "Print do histórico:", "Histórico:"
-  // Captura tudo entre aspas após o rótulo, mesmo com múltiplas linhas
-  const hist=bloco.match(/Informa[çc][õo]es do hist[oó]rico:\s*\n?"([\s\S]*?)"/i)
-            ||bloco.match(/Print do hist[oó]rico:\s*\n?"([\s\S]*?)"/i)
-            ||bloco.match(/Hist[oó]rico:\s*\n?"([\s\S]*?)"/i);
+  // Histórico — aceita aspas retas, curvas e sem aspas
+  const hist=bloco.match(/Informa[çc][õo]es do hist[oó]rico:\s*\n?["""]?([\s\S]*?)[""""]?\s*(?=\n\n|\nResultado|\nRESULTADO)/i)
+            ||bloco.match(/Print do hist[oó]rico:\s*\n?["""]?([\s\S]*?)[""""]?\s*(?=\n\n|\nResultado|\nRESULTADO)/i)
+            ||bloco.match(/Hist[oó]rico:\s*\n?["""]?([\s\S]*?)[""""]?\s*(?=\n\n|\nResultado|\nRESULTADO)/i);
   if(hist) document.getElementById(`${prefix}historico`).value=hist[1].trim();
 
   // Resultado
