@@ -486,6 +486,17 @@ function extractCriterios(blocoText, numCriterios){
 }
 
 /* ── PARSE PRINCIPAL ── */
+// Ao carregar a página, verifica se veio texto via URL (?dados=...)
+window.addEventListener('load', function(){
+  const params = new URLSearchParams(window.location.search);
+  const dados = params.get('dados');
+  if(dados && dados.trim()){
+    document.getElementById('pasteInput').value = dados;
+    parseText();
+    showToast('✅ Dados carregados automaticamente do Google Docs!','success');
+  }
+});
+
 function parseText(){
   const raw=document.getElementById('pasteInput').value;
   if(!raw.trim()){showToast('Cole o texto do Google Docs primeiro!','error');return;}
@@ -527,18 +538,21 @@ function parseBloco(bloco,prefix,critId,critPrefix){
   const mod=detectMod(bloco);
   document.getElementById(`${prefix}modalidade`).value=mod;
 
-  // Empresa
-  const emp=bloco.match(/Empresa:\s*([^\n]+)/i);
+  // Empresa — aceita "Empresa:", "Empresa com ID:", "Empresa com id:"
+  const emp=bloco.match(/Empresa(?:\s+com\s+ID)?:\s*([^\n]+)/i);
   if(emp) document.getElementById(`${prefix}empresa`).value=emp[1].trim();
 
-  // Data da ligação
-  const datL=bloco.match(/Data da liga[çc][ãa]o:\s*([^\n]+)/i);
+  // Data da ligação — aceita "Data da ligação:", "Data do contato:", "Data:"
+  const datL=bloco.match(/Data da liga[çc][ãa]o:\s*([^\n]+)/i)
+            ||bloco.match(/Data do contato:\s*([^\n]+)/i)
+            ||bloco.match(/Data:\s*(\d{2}\/\d{2}\/\d{4})/i);
   if(datL) document.getElementById(`${prefix}data`).value=datL[1].trim();
 
-  // Histórico — entre aspas após "Print do histórico:" ou "Histórico:"
-  const hist=bloco.match(/Print do hist[oó]rico:\s*\n?"([^"]+)"/is)
-            ||bloco.match(/Hist[oó]rico:\s*\n?"([^"]+)"/is)
-            ||bloco.match(/Print do hist[oó]rico:\s*([^\n]{10,})/i);
+  // Histórico — aceita "Informações do histórico:", "Print do histórico:", "Histórico:"
+  // Captura tudo entre aspas após o rótulo, mesmo com múltiplas linhas
+  const hist=bloco.match(/Informa[çc][õo]es do hist[oó]rico:\s*\n?"([\s\S]*?)"/i)
+            ||bloco.match(/Print do hist[oó]rico:\s*\n?"([\s\S]*?)"/i)
+            ||bloco.match(/Hist[oó]rico:\s*\n?"([\s\S]*?)"/i);
   if(hist) document.getElementById(`${prefix}historico`).value=hist[1].trim();
 
   // Resultado
