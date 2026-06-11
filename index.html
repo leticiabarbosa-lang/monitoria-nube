@@ -543,25 +543,33 @@ function parseText(){
 }
 
 function parseBloco(bloco,prefix,critId,critPrefix){
-  // Modalidade
-  const mod=detectMod(bloco);
+  // Detectar modalidade pelo cabeçalho MONITORIA – XXXX dentro do próprio bloco
+  const modHeader=bloco.match(/MONITORIA\s*[–\-]\s*([^\n]+)/i);
+  const modTexto=modHeader?modHeader[1].trim():'';
+  const mod=detectMod(modTexto||bloco);
   document.getElementById(`${prefix}modalidade`).value=mod;
+  buildCriterios(critId,critPrefix,mod);
 
-  // Empresa — aceita "Empresa:", "Empresa com ID:", "Empresa com id:"
-  const emp=bloco.match(/Empresa(?:\s+com\s+ID)?:\s*([^\n]+)/i);
+  // Empresa — aceita "Empresa:", "Empresa com ID:", "Empresa (com ID):"
+  const emp=bloco.match(/Empresa(?:\s*\(com\s+ID\)|\s+com\s+ID)?:\s*([^\n]+)/i);
   if(emp) document.getElementById(`${prefix}empresa`).value=emp[1].trim();
 
-  // Data da ligação — aceita "Data da ligação:", "Data do contato:", "Data:"
+  // Data da ligação
   const datL=bloco.match(/Data da liga[çc][ãa]o:\s*([^\n]+)/i)
             ||bloco.match(/Data do contato:\s*([^\n]+)/i)
-            ||bloco.match(/Data:\s*(\d{2}\/\d{2}\/\d{4})/i);
+            ||bloco.match(/Data:\s*(\d{2}\/\d{2}(?:\/\d{2,4})?)/i);
   if(datL) document.getElementById(`${prefix}data`).value=datL[1].trim();
 
-  // Histórico — aceita aspas retas, curvas e sem aspas
-  const hist=bloco.match(/Informa[çc][õo]es do hist[oó]rico:\s*\n?["""]?([\s\S]*?)[""""]?\s*(?=\n\n|\nResultado|\nRESULTADO)/i)
-            ||bloco.match(/Print do hist[oó]rico:\s*\n?["""]?([\s\S]*?)[""""]?\s*(?=\n\n|\nResultado|\nRESULTADO)/i)
-            ||bloco.match(/Hist[oó]rico:\s*\n?["""]?([\s\S]*?)[""""]?\s*(?=\n\n|\nResultado|\nRESULTADO)/i);
-  if(hist) document.getElementById(`${prefix}historico`).value=hist[1].trim();
+  // Histórico — captura tudo entre o rótulo e "Resultado"
+  // Funciona com aspas curvas, retas ou sem aspas, e com múltiplas linhas
+  const histMatch=bloco.match(
+    /(?:Informa[çc][õo]es do hist[oó]rico|Print do hist[oó]rico|Hist[oó]rico)\s*:\s*\n?([\s\S]*?)(?=\n\s*\nResultado|\nResultado|\nRESULTADO)/i
+  );
+  if(histMatch){
+    // Remove aspas curvas/retas do início e fim se existirem
+    const histLimpo=histMatch[1].trim().replace(/^["""]/,'').replace(/["""]$/,'').trim();
+    if(histLimpo) document.getElementById(`${prefix}historico`).value=histLimpo;
+  }
 
   // Resultado
   const res=bloco.match(/Resultado da Monitoria:\s*([\d,\.]+)\s*%/i)
