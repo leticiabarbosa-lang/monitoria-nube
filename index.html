@@ -942,12 +942,11 @@ function generatePDF(){
 
   function drawAcoes(acoes,suffix){
     if(!acoes.trim()) return;
-    // Separar em blocos: linhas normais e pares Situação/Resposta
-    // Detecta padrão: linha curta seguida de linha com "Resposta:" ou linha com aspas
     const rawLines=acoes.split('\n').filter(l=>l.trim());
     if(!rawLines.length) return;
 
     check(14);
+    // Título da seção com barra azul
     doc.setFillColor(...C.blue);doc.rect(M,y,3,8,'F');
     doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(...C.blue);
     doc.text('PRÓXIMA AÇÃO PRÁTICA — '+suffix,M+6,y+5.5);
@@ -957,40 +956,52 @@ function generatePDF(){
       const trimmed=it.trim();
       if(!trimmed) return;
 
-      // Detecta se é uma "Situação:" (linha que começa com aspas ou começa com "Situação")
-      const isSituacao=/^[""]|^Situa[çc][ãa]o[:\s]/i.test(trimmed);
+      const isSituacao=/^["""]|^Situa[çc][ãa]o[:\s]/i.test(trimmed);
       const isResposta=/^Resposta[:\s]/i.test(trimmed);
 
-      const ll=doc.splitTextToSize(trimmed,CW-16);
-      const ih=ll.length*4.5+5;
-      check(ih+2);
-
       if(isSituacao){
-        // Fundo azul claro para situação
-        doc.setFillColor(...C.blueLight);doc.setDrawColor(...C.border);doc.setLineWidth(0.2);
-        doc.roundedRect(M,y,CW,ih,1,1,'FD');
+        // Caixa azul claro para situação
+        const textoSit=trimmed.replace(/^["""]|["""]$/g,'').replace(/^Situa[çc][ãa]o[:\s]*/i,'').trim();
+        const ll=doc.splitTextToSize(textoSit,CW-30);
+        const ih=Math.max(10,ll.length*4.5+6);
+        check(ih+2);
+        doc.setFillColor(...C.blueLight);doc.setDrawColor(180,205,240);doc.setLineWidth(0.3);
+        doc.roundedRect(M,y,CW,ih,2,2,'FD');
+        doc.setFillColor(...C.blue);doc.rect(M,y,3,ih,'F');
         doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(...C.blue);
-        doc.text('Situação:',M+4,y+4.5);
-        doc.setFont('helvetica','italic');doc.setTextColor(...C.dark);
-        const ll2=doc.splitTextToSize(trimmed.replace(/^[""]|[""]$/g,'').replace(/^Situa[çc][ãa]o[:\s]*/i,''),CW-28);
-        doc.text(ll2,M+22,y+4.5);
+        doc.text('Situação:',M+6,y+5);
+        doc.setFont('helvetica','italic');doc.setFontSize(7);doc.setTextColor(...C.dark);
+        doc.text(ll,M+24,y+5);
+        y+=ih+3;
+
       } else if(isResposta){
-        // Fundo verde claro para resposta
-        doc.setFillColor(240,253,244);doc.setDrawColor(187,247,208);doc.setLineWidth(0.2);
-        doc.roundedRect(M,y,CW,ih,1,1,'FD');
+        // Caixa verde para resposta
+        const textoResp=trimmed.replace(/^Resposta[:\s]*/i,'').replace(/^["""]|["""]$/g,'').trim();
+        const ll=doc.splitTextToSize(textoResp,CW-30);
+        const ih=Math.max(10,ll.length*4.5+6);
+        check(ih+2);
+        doc.setFillColor(240,253,244);doc.setDrawColor(187,247,208);doc.setLineWidth(0.3);
+        doc.roundedRect(M,y,CW,ih,2,2,'FD');
+        doc.setFillColor(...C.green);doc.rect(M,y,3,ih,'F');
         doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(22,101,52);
-        doc.text('Resposta:',M+4,y+4.5);
-        doc.setFont('helvetica','normal');doc.setTextColor(...C.dark);
-        const ll2=doc.splitTextToSize(trimmed.replace(/^Resposta[:\s]*/i,''),CW-26);
-        doc.text(ll2,M+22,y+4.5);
+        doc.text('Resposta:',M+6,y+5);
+        doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(...C.dark);
+        doc.text(ll,M+24,y+5);
+        y+=ih+3;
+
       } else {
-        // Item normal — traço simples
+        // Item normal — caixa cinza clara com bullet azul
+        const ll=doc.splitTextToSize(trimmed,CW-14);
+        const ih=Math.max(10,ll.length*4.5+6);
+        check(ih+2);
+        doc.setFillColor(248,249,252);doc.setDrawColor(...C.border);doc.setLineWidth(0.2);
+        doc.roundedRect(M,y,CW,ih,2,2,'FD');
+        // Bullet laranja
+        doc.setFillColor(...C.orange);doc.circle(M+5,y+ih/2,1.5,'F');
         doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(...C.dark);
-        doc.setDrawColor(...C.border);doc.setLineWidth(0.2);
-        doc.line(M+2,y+3,M+5,y+3);
-        doc.text(ll,M+8,y+4.5);
+        doc.text(ll,M+10,y+5);
+        y+=ih+3;
       }
-      y+=ih+2;
     });
     y+=4;
   }
