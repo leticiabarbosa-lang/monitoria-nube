@@ -821,152 +821,101 @@ function generatePDF(){
     if(!posArr.length&&!melArr.length) return;
 
     const half=(CW-4)/2;
+    const TITULO_H=14; // altura reservada para o título
+    const ITEM_GAP=3;  // espaço entre itens
 
-    // Calcula altura real de uma coluna
-    function calcH(arr,colW){
-      let h=14;
-      arr.forEach(it=>{h+=doc.splitTextToSize('• '+it,colW-8).length*4.5+3;});
+    // Calcula altura exata de uma coluna
+    function calcH(arr, colW){
+      let h=TITULO_H;
+      arr.forEach(it=>{
+        h+=doc.splitTextToSize('• '+it, colW-8).length*4.5+ITEM_GAP;
+      });
       return h+4;
     }
 
-    // Desenha uma coluna — se o conteúdo ultrapassar a página, quebra e continua
-    function desenhaColuna(arr,x,colW,titulo,corTitulo,bg,bd,yInicio){
-      const totalH=calcH(arr,colW);
-
-      // Desenha fundo da caixa inteira (mesmo que ultrapasse — será clipado pela página)
-      doc.setFillColor(...bg);doc.setDrawColor(...bd);doc.setLineWidth(0.3);
-      // Limita altura ao espaço disponível na página para não vazar
-      const hDisp=Math.min(totalH, PAGE_BOTTOM-yInicio);
-      doc.roundedRect(x,yInicio,colW,hDisp,2,2,'FD');
-
-      // Título
-      doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(...corTitulo);
-      doc.text(titulo,x+4,yInicio+7);
-
-      let iy=yInicio+13;
+    // Renderiza itens de uma coluna a partir de uma posição y e x
+    function renderItens(arr, x, colW, startY){
+      let iy=startY+TITULO_H;
       arr.forEach(it=>{
-        const ll=doc.splitTextToSize('• '+it,colW-8);
-        const itemH=ll.length*4.5+3;
-        // Se o item não cabe, pula para nova página e reconstrói o fundo
-        if(iy+itemH>PAGE_BOTTOM){
-          newPage();
-          iy=y;
-          // Caixa de continuação
-          const hRest=calcH(arr.slice(arr.indexOf(it)),colW);
-          const hDispRest=Math.min(hRest,PAGE_BOTTOM-iy);
-          doc.setFillColor(...bg);doc.setDrawColor(...bd);doc.setLineWidth(0.3);
-          doc.roundedRect(x,iy,colW,hDispRest,2,2,'FD');
-          doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(...corTitulo);
-          doc.text(titulo+' (cont.)',x+4,iy+7);
-          iy+=13;
-        }
+        const ll=doc.splitTextToSize('• '+it, colW-8);
         doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(...C.dark);
-        doc.text(ll,x+4,iy);
-        iy+=itemH;
+        doc.text(ll, x+4, iy);
+        iy+=ll.length*4.5+ITEM_GAP;
       });
-      return iy; // retorna posição y final
     }
 
-    // SEMPRE desenha lado a lado — calcula altura máxima das duas colunas
-    const phTotal=calcH(posArr,half);
-    const mhTotal=calcH(melArr,half);
-    const rH=Math.max(phTotal,mhTotal);
-
-    // Se cabe tudo lado a lado na página atual
-    if(y+rH<=PAGE_BOTTOM){
-      // Coluna verde
-      doc.setFillColor(240,253,244);doc.setDrawColor(187,247,208);doc.setLineWidth(0.3);
-      doc.roundedRect(M,y,half,rH,2,2,'FD');
-      doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(22,101,52);
-      doc.text('PONTOS POSITIVOS — '+suffix,M+4,y+7);
-      let py=y+13;
-      posArr.forEach(it=>{
-        const ll=doc.splitTextToSize('• '+it,half-8);
-        doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(...C.dark);
-        doc.text(ll,M+4,py); py+=ll.length*4.5+3;
+    // Divide array em dois: o que cabe na página e o que sobra
+    function splitParaCaber(arr, colW, espacoDisp){
+      const cabe=[], sobra=[];
+      let h=TITULO_H+4;
+      let passou=false;
+      arr.forEach(it=>{
+        if(passou){ sobra.push(it); return; }
+        const itemH=doc.splitTextToSize('• '+it,colW-8).length*4.5+ITEM_GAP;
+        if(h+itemH<=espacoDisp){ h+=itemH; cabe.push(it); }
+        else { passou=true; sobra.push(it); }
       });
+      return {cabe, sobra};
+    }
 
-      // Coluna âmbar
+    // Desenha par de colunas lado a lado numa posição y
+    function desenharPar(pArr, mArr, yPos){
+      const ph=calcH(pArr, half);
+      const mh=calcH(mArr, half);
+      const rH=Math.max(ph, mh);
+
+      // Fundo verde
+      doc.setFillColor(240,253,244);doc.setDrawColor(187,247,208);doc.setLineWidth(0.3);
+      doc.roundedRect(M, yPos, half, rH, 2,2,'FD');
+      doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(22,101,52);
+      doc.text('PONTOS POSITIVOS — '+suffix, M+4, yPos+7);
+      renderItens(pArr, M, half, yPos);
+
+      // Fundo âmbar
       const x2=M+half+4;
       doc.setFillColor(255,248,230);doc.setDrawColor(253,230,138);doc.setLineWidth(0.3);
-      doc.roundedRect(x2,y,half,rH,2,2,'FD');
+      doc.roundedRect(x2, yPos, half, rH, 2,2,'FD');
       doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(146,64,14);
-      doc.text('PONTOS DE MELHORIA — '+suffix,x2+4,y+7);
-      let my=y+13;
-      melArr.forEach(it=>{
-        const ll=doc.splitTextToSize('• '+it,half-8);
-        doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(...C.dark);
-        doc.text(ll,x2+4,my); my+=ll.length*4.5+3;
-      });
-      y+=rH+8;
+      doc.text('PONTOS DE MELHORIA — '+suffix, x2+4, yPos+7);
+      renderItens(mArr, x2, half, yPos);
 
-    } else {
-      // Não cabe inteiro — quebra em nova página e tenta de novo
-      newPage();
+      return rH;
+    }
 
-      const phN=calcH(posArr,half);
-      const mhN=calcH(melArr,half);
-      const rHN=Math.max(phN,mhN);
+    // Lógica principal: desenha em fatias que cabem na página
+    let pRestantes=[...posArr];
+    let mRestantes=[...melArr];
+    let primeiraVez=true;
 
-      if(y+rHN<=PAGE_BOTTOM){
-        // Cabe na nova página lado a lado
-        doc.setFillColor(240,253,244);doc.setDrawColor(187,247,208);doc.setLineWidth(0.3);
-        doc.roundedRect(M,y,half,rHN,2,2,'FD');
-        doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(22,101,52);
-        doc.text('PONTOS POSITIVOS — '+suffix,M+4,y+7);
-        let py=y+13;
-        posArr.forEach(it=>{
-          const ll=doc.splitTextToSize('• '+it,half-8);
-          doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(...C.dark);
-          doc.text(ll,M+4,py); py+=ll.length*4.5+3;
-        });
+    while(pRestantes.length>0 || mRestantes.length>0){
+      const espacoDisp=PAGE_BOTTOM-y;
 
-        const x2=M+half+4;
-        doc.setFillColor(255,248,230);doc.setDrawColor(253,230,138);doc.setLineWidth(0.3);
-        doc.roundedRect(x2,y,half,rHN,2,2,'FD');
-        doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(146,64,14);
-        doc.text('PONTOS DE MELHORIA — '+suffix,x2+4,y+7);
-        let my=y+13;
-        melArr.forEach(it=>{
-          const ll=doc.splitTextToSize('• '+it,half-8);
-          doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(...C.dark);
-          doc.text(ll,x2+4,my); my+=ll.length*4.5+3;
-        });
-        y+=rHN+8;
+      // Verifica quanto cabe na página atual
+      const {cabe:pCabe, sobra:pSobra}=splitParaCaber(pRestantes, half, espacoDisp);
+      const {cabe:mCabe, sobra:mSobra}=splitParaCaber(mRestantes, half, espacoDisp);
 
-      } else {
-        // Conteúdo muito grande mesmo — desenha coluna única com quebra de página por item
-        // Positivos
-        check(14);
-        doc.setFillColor(...C.blue);doc.rect(M,y,3,7,'F');
-        doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(22,101,52);
-        doc.text('PONTOS POSITIVOS — '+suffix,M+6,y+5); y+=10;
-        posArr.forEach(it=>{
-          const ll=doc.splitTextToSize('• '+it,CW-10);
-          const ih=ll.length*4.5+5;
-          check(ih);
-          doc.setFillColor(240,253,244);doc.setDrawColor(187,247,208);doc.setLineWidth(0.2);
-          doc.roundedRect(M,y,CW,ih,1,1,'FD');
-          doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(...C.dark);
-          doc.text(ll,M+4,y+4); y+=ih+2;
-        });
-        y+=4;
+      // Se nada cabe (espaço muito pequeno), vai para nova página
+      if(pCabe.length===0 && mCabe.length===0){
+        newPage();
+        continue;
+      }
 
-        // Melhorias
-        check(14);
-        doc.setFillColor(...C.orange);doc.rect(M,y,3,7,'F');
-        doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(146,64,14);
-        doc.text('PONTOS DE MELHORIA — '+suffix,M+6,y+5); y+=10;
-        melArr.forEach(it=>{
-          const ll=doc.splitTextToSize('• '+it,CW-10);
-          const ih=ll.length*4.5+5;
-          check(ih);
-          doc.setFillColor(255,248,230);doc.setDrawColor(253,230,138);doc.setLineWidth(0.2);
-          doc.roundedRect(M,y,CW,ih,1,1,'FD');
-          doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(...C.dark);
-          doc.text(ll,M+4,y+4); y+=ih+2;
-        });
-        y+=4;
+      // Desenha o que cabe
+      const alturaUsada=desenharPar(
+        pCabe.length>0 ? pCabe : [''],
+        mCabe.length>0 ? mCabe : [''],
+        y
+      );
+      y+=alturaUsada+8;
+
+      pRestantes=pSobra;
+      mRestantes=mSobra;
+
+      // Se ainda tem conteúdo, vai para nova página
+      if(pRestantes.length>0 || mRestantes.length>0){
+        newPage();
+        // Atualiza suffix para indicar continuação
+        suffix=suffix+' (cont.)';
       }
     }
   }
