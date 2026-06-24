@@ -1,0 +1,1097 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Gerador de Monitoria — Nube</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --blue:#1a5fa8;--blue-dark:#0f3d6e;--blue-light:#e8f0fb;
+  --orange:#f5a623;--orange-light:#fff8ec;
+  --green:#27ae60;--red:#e74c3c;
+  --gray:#f4f5f7;--border:#e2e6ea;
+  --text:#1a1a2e;--muted:#6b7a90;--white:#ffffff;
+  --radius:10px;--shadow:0 2px 12px rgba(26,95,168,.08)
+}
+body{font-family:'DM Sans',sans-serif;background:#f0f4fa;color:var(--text);min-height:100vh}
+
+.topbar{background:var(--blue-dark);padding:0 32px;height:56px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:100;border-bottom:3px solid var(--orange)}
+.topbar-logo{background:var(--orange);color:var(--blue-dark);font-weight:700;font-size:12px;padding:4px 10px;border-radius:6px;letter-spacing:1px}
+.topbar h1{color:white;font-size:15px;font-weight:600}
+.topbar-sub{color:rgba(255,255,255,.5);font-size:12px;margin-left:4px}
+.topbar-spacer{flex:1}
+.btn-generate{background:var(--orange);color:var(--blue-dark);border:none;padding:9px 22px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:8px;transition:background .2s,transform .1s}
+.btn-generate:hover{background:#e09510}
+.btn-generate:active{transform:scale(.97)}
+
+.layout{display:grid;grid-template-columns:220px 1fr;max-width:1100px;margin:28px auto;gap:20px;padding:0 16px 60px}
+
+.sidebar{position:sticky;top:76px;align-self:start}
+.nav-card{background:white;border-radius:var(--radius);border:1px solid var(--border);overflow:hidden;box-shadow:var(--shadow)}
+.nav-section{padding:10px 14px 4px;font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;border-top:1px solid var(--border)}
+.nav-section:first-child{border-top:none}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 14px;font-size:13px;color:var(--muted);cursor:pointer;transition:background .15s,color .15s;border-left:3px solid transparent;text-decoration:none}
+.nav-item:hover{background:var(--blue-light);color:var(--blue)}
+.nav-dot{width:8px;height:8px;border-radius:50%;background:var(--border);flex-shrink:0}
+
+.main{display:flex;flex-direction:column;gap:16px}
+
+.paste-box{background:linear-gradient(135deg,var(--blue-dark) 0%,var(--blue) 100%);border-radius:var(--radius);padding:20px 24px;color:white;box-shadow:var(--shadow)}
+.paste-box-title{font-size:13px;font-weight:700;margin-bottom:4px}
+.paste-box-sub{font-size:12px;opacity:.7;margin-bottom:12px}
+.paste-box textarea{width:100%;height:90px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:8px;padding:10px 12px;color:white;font-family:'DM Mono',monospace;font-size:11px;resize:none;outline:none}
+.paste-box textarea::placeholder{color:rgba(255,255,255,.4)}
+.paste-box textarea:focus{border-color:var(--orange)}
+.btn-parse{background:var(--orange);color:var(--blue-dark);border:none;padding:8px 18px;border-radius:7px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;cursor:pointer;margin-top:10px;transition:background .2s}
+.btn-parse:hover{background:#e09510}
+
+.section-card{background:white;border-radius:var(--radius);border:1px solid var(--border);box-shadow:var(--shadow);overflow:hidden}
+.section-header{display:flex;align-items:center;gap:10px;padding:14px 20px;border-bottom:1px solid var(--border)}
+.section-header-bar{width:4px;height:20px;border-radius:2px;background:var(--blue);flex-shrink:0}
+.section-header-bar.orange{background:var(--orange)}
+.section-header h2{font-size:13px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:.5px}
+.section-header h2.orange{color:#c47d00}
+.section-body{padding:20px}
+
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-row-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.form-group{display:flex;flex-direction:column;gap:5px;margin-bottom:14px}
+.form-group:last-child{margin-bottom:0}
+label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+input[type=text],input[type=number],select,textarea{border:1.5px solid var(--border);border-radius:8px;padding:9px 12px;font-size:13px;font-family:'DM Sans',sans-serif;color:var(--text);background:white;outline:none;transition:border-color .2s;width:100%}
+input:focus,select:focus,textarea:focus{border-color:var(--blue)}
+textarea{resize:vertical;line-height:1.55}
+
+.lig-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:700;letter-spacing:.5px;margin-left:auto}
+.lig-badge.blue{background:var(--blue-light);color:var(--blue)}
+.lig-badge.orange{background:var(--orange-light);color:#b87a00}
+
+.criterio-row{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:start;padding:12px 0;border-bottom:1px solid var(--gray)}
+.criterio-row:last-child{border-bottom:none}
+.criterio-label{font-size:12.5px;color:var(--text);line-height:1.4;font-weight:500}
+.criterio-obs-input{margin-top:6px;width:100%;border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:11px;font-family:'DM Sans',sans-serif;color:var(--text);background:var(--gray);outline:none;resize:none}
+.criterio-obs-input:focus{border-color:var(--blue);background:white}
+.status-group{display:flex;gap:4px;flex-shrink:0;flex-direction:column;align-items:flex-end}
+.sbt{border:1.5px solid var(--border);background:white;padding:5px 10px;border-radius:20px;font-size:11px;font-weight:600;cursor:pointer;color:var(--muted);transition:all .15s;white-space:nowrap;min-width:100px;text-align:center}
+.sbt:hover{border-color:var(--blue);color:var(--blue)}
+.sbt.ok{background:#e8f5e9;border-color:#4caf50;color:#2e7d32}
+.sbt.nok{background:#fdecea;border-color:var(--red);color:#b71c1c}
+.sbt.parcial{background:#fff8e1;border-color:var(--orange);color:#7a5200}
+.sbt.na{background:#eceff1;border-color:#9e9e9e;color:#546e7a}
+
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.highlight-box{border-radius:8px;padding:14px}
+.highlight-box.green{background:#f0fdf4;border:1px solid #bbf7d0}
+.highlight-box.amber{background:var(--orange-light);border:1px solid #fde68a}
+.highlight-box h3{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.highlight-box.green h3{color:#166534}
+.highlight-box.amber h3{color:#92400e}
+.hl-textarea{background:transparent;border-radius:6px;padding:7px;font-size:12px;font-family:'DM Sans',sans-serif;width:100%;outline:none;resize:vertical;color:var(--text)}
+.highlight-box.green .hl-textarea{border:1px solid #bbf7d0}
+.highlight-box.amber .hl-textarea{border:1px solid #fde68a}
+
+.score-row{display:flex;align-items:center;gap:12px;margin-top:4px}
+.score-number{font-size:28px;font-weight:700;color:var(--orange);font-family:'DM Mono',monospace}
+.score-bar-wrap{flex:1;height:8px;background:var(--gray);border-radius:4px;overflow:hidden}
+.score-bar{height:100%;background:linear-gradient(90deg,var(--blue),var(--orange));border-radius:4px;transition:width .4s}
+
+.toast{position:fixed;bottom:24px;right:24px;background:#1a1a2e;color:white;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:500;box-shadow:0 4px 20px rgba(0,0,0,.25);transform:translateY(60px);opacity:0;transition:all .3s;z-index:999}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.success{border-left:4px solid var(--green)}
+.toast.error{border-left:4px solid var(--red)}
+.toast.info{border-left:4px solid var(--orange)}
+
+.tipo-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:14px}
+
+@media(max-width:700px){
+  .layout{grid-template-columns:1fr}
+  .sidebar{display:none}
+  .form-row,.form-row-4,.two-col,.tipo-row{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-logo">NUBE</div>
+  <h1>Gerador de Monitoria</h1>
+  <span class="topbar-sub">— Consolidado de Avaliações</span>
+  <div class="topbar-spacer"></div>
+  <button class="btn-generate" onclick="generatePDF()">⬇ Gerar PDF</button>
+</div>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="nav-card">
+      <div class="nav-section">Geral</div>
+      <a class="nav-item" href="#" onclick="navTo('sec-paste');return false"><span class="nav-dot"></span>Colar do Docs</a>
+      <a class="nav-item" href="#" onclick="navTo('sec-ident');return false"><span class="nav-dot"></span>Identificação</a>
+      <div class="nav-section">Ligação 1</div>
+      <a class="nav-item" href="#" onclick="navTo('sec-ctx1');return false"><span class="nav-dot"></span>Contexto</a>
+      <a class="nav-item" href="#" onclick="navTo('sec-crit1');return false"><span class="nav-dot"></span>Critérios</a>
+      <a class="nav-item" href="#" onclick="navTo('sec-dest1');return false"><span class="nav-dot"></span>Destaques</a>
+      <div class="nav-section">Ligação 2</div>
+      <a class="nav-item" href="#" onclick="navTo('sec-ctx2');return false"><span class="nav-dot"></span>Contexto</a>
+      <a class="nav-item" href="#" onclick="navTo('sec-crit2');return false"><span class="nav-dot"></span>Critérios</a>
+      <a class="nav-item" href="#" onclick="navTo('sec-dest2');return false"><span class="nav-dot"></span>Destaques</a>
+    </div>
+  </aside>
+
+  <main class="main">
+
+    <div class="paste-box" id="sec-paste">
+      <div class="paste-box-title">📋 Preenchimento automático via Google Docs</div>
+      <div class="paste-box-sub">Abra a aba do colaborador no Docs → Ctrl+A → Ctrl+C → cole aqui → clique no botão</div>
+      <textarea id="pasteInput" placeholder="Cole aqui o conteúdo copiado do Google Docs..."></textarea>
+      <button class="btn-parse" onclick="parseText()">⚡ Preencher automaticamente</button>
+    </div>
+
+    <!-- IDENTIFICAÇÃO -->
+    <div class="section-card" id="sec-ident">
+      <div class="section-header"><div class="section-header-bar"></div><h2>Identificação</h2></div>
+      <div class="section-body">
+        <div class="form-row-4">
+          <div class="form-group">
+            <label>Colaborador(a)</label>
+            <input type="text" id="colaborador" spellcheck="true" placeholder="Nome completo"/>
+          </div>
+          <div class="form-group">
+            <label>Aplicado por</label>
+            <input type="text" id="responsavel" spellcheck="true" placeholder="Nome"/>
+          </div>
+          <div class="form-group">
+            <label>Data de Aplicação</label>
+            <input type="text" id="dataAplicacao" placeholder="DD/MM/AAAA"/>
+          </div>
+          <div class="form-group">
+            <label>Função</label>
+            <input type="text" id="area" spellcheck="true" placeholder="Ex: Executivo de Contas"/>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LIGAÇÃO 1 CONTEXTO -->
+    <div class="section-card" id="sec-ctx1">
+      <div class="section-header"><div class="section-header-bar"></div><h2>Ligação 1 — Contexto</h2><span class="lig-badge blue">Ligação 1</span></div>
+      <div class="section-body">
+        <div class="tipo-row">
+          <div class="form-group">
+            <label>Modalidade</label>
+            <select id="l1modalidade" onchange="buildCriterios('criterios1','l1c',this.value)">
+              <option value="relacionamento">Relacionamento</option>
+              <option value="receptivo">Receptivo</option>
+              <option value="apoio">Apoio Administrativo</option>
+              <option value="generico">Genérico</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Data da Ligação</label>
+            <input type="text" id="l1data" placeholder="DD/MM/AAAA"/>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Empresa</label>
+          <input type="text" id="l1empresa" spellcheck="true" placeholder="Nome da empresa — ID: XXXXXX"/>
+        </div>
+        <div class="form-group">
+          <label>Histórico (Print do histórico)</label>
+          <textarea id="l1historico" rows="4" spellcheck="true" placeholder="Texto do histórico..."></textarea>
+        </div>
+        <div class="form-group" style="max-width:220px">
+          <label>Resultado (%)</label>
+          <input type="number" id="l1resultado" placeholder="Ex: 57.2" min="0" max="100" step="0.1" oninput="updateScore('l1')"/>
+          <div class="score-row">
+            <span class="score-number" id="l1score">—</span>
+            <div class="score-bar-wrap"><div class="score-bar" id="l1bar" style="width:0%"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LIGAÇÃO 1 CRITÉRIOS -->
+    <div class="section-card" id="sec-crit1">
+      <div class="section-header"><div class="section-header-bar"></div><h2>Critérios Avaliados — Ligação 1</h2><span class="lig-badge blue">Ligação 1</span></div>
+      <div class="section-body" id="criterios1"></div>
+    </div>
+
+    <!-- LIGAÇÃO 1 DESTAQUES -->
+    <div class="section-card" id="sec-dest1">
+      <div class="section-header"><div class="section-header-bar"></div><h2>Destaques e Ações — Ligação 1</h2></div>
+      <div class="section-body">
+        <div class="two-col" style="margin-bottom:14px">
+          <div class="highlight-box green">
+            <h3>✅ Pontos Positivos</h3>
+            <textarea class="hl-textarea" id="l1positivos" rows="4" spellcheck="true" placeholder="Um item por linha..."></textarea>
+          </div>
+          <div class="highlight-box amber">
+            <h3>🎯 Pontos de Melhoria</h3>
+            <textarea class="hl-textarea" id="l1melhorias" rows="4" spellcheck="true" placeholder="Um item por linha..."></textarea>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>📌 Próxima Ação Prática</label>
+          <textarea id="l1acoes" rows="3" spellcheck="true" placeholder="Um item por linha (será exibido com bullets no PDF)..."></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- LIGAÇÃO 2 CONTEXTO -->
+    <div class="section-card" id="sec-ctx2">
+      <div class="section-header"><div class="section-header-bar orange"></div><h2 class="orange">Ligação 2 — Contexto</h2><span class="lig-badge orange">Ligação 2</span></div>
+      <div class="section-body">
+        <div class="tipo-row">
+          <div class="form-group">
+            <label>Modalidade</label>
+            <select id="l2modalidade" onchange="buildCriterios('criterios2','l2c',this.value)">
+              <option value="relacionamento">Relacionamento</option>
+              <option value="receptivo">Receptivo</option>
+              <option value="apoio">Apoio Administrativo</option>
+              <option value="generico">Genérico</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Data da Ligação</label>
+            <input type="text" id="l2data" placeholder="DD/MM/AAAA"/>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Empresa</label>
+          <input type="text" id="l2empresa" spellcheck="true" placeholder="Nome da empresa — ID: XXXXXX"/>
+        </div>
+        <div class="form-group">
+          <label>Histórico (Print do histórico)</label>
+          <textarea id="l2historico" rows="4" spellcheck="true" placeholder="Texto do histórico..."></textarea>
+        </div>
+        <div class="form-group" style="max-width:220px">
+          <label>Resultado (%)</label>
+          <input type="number" id="l2resultado" placeholder="Ex: 51.2" min="0" max="100" step="0.1" oninput="updateScore('l2')"/>
+          <div class="score-row">
+            <span class="score-number" id="l2score">—</span>
+            <div class="score-bar-wrap"><div class="score-bar" id="l2bar" style="width:0%"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LIGAÇÃO 2 CRITÉRIOS -->
+    <div class="section-card" id="sec-crit2">
+      <div class="section-header"><div class="section-header-bar orange"></div><h2 class="orange">Critérios Avaliados — Ligação 2</h2><span class="lig-badge orange">Ligação 2</span></div>
+      <div class="section-body" id="criterios2"></div>
+    </div>
+
+    <!-- LIGAÇÃO 2 DESTAQUES -->
+    <div class="section-card" id="sec-dest2">
+      <div class="section-header"><div class="section-header-bar orange"></div><h2 class="orange">Destaques e Ações — Ligação 2</h2></div>
+      <div class="section-body">
+        <div class="two-col" style="margin-bottom:14px">
+          <div class="highlight-box green">
+            <h3>✅ Pontos Positivos</h3>
+            <textarea class="hl-textarea" id="l2positivos" rows="4" spellcheck="true" placeholder="Um item por linha..."></textarea>
+          </div>
+          <div class="highlight-box amber">
+            <h3>🎯 Pontos de Melhoria</h3>
+            <textarea class="hl-textarea" id="l2melhorias" rows="4" spellcheck="true" placeholder="Um item por linha..."></textarea>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>📌 Próxima Ação Prática</label>
+          <textarea id="l2acoes" rows="3" spellcheck="true" placeholder="Um item por linha..."></textarea>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ── NAV ── */
+function navTo(id){
+  const el=document.getElementById(id);
+  if(el) el.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+/* ── CRITÉRIOS ── */
+const CRITERIOS={
+  relacionamento:[
+    "Histórico Compatível com a Ligação?",
+    "Se apresentou e deu contexto da ligação?",
+    "Questionou como está a parceria?",
+    "Questionou como está o desempenho dos estags/aprendizes?",
+    "Verificou Convênios e Contratos pendentes? Orientou?",
+    "Se tiver aprendiz, orientou sobre a equipe de relacionamento do Saber?",
+    "Caso mencione possível rescisão (estags./aprendiz), sugeriu reposição?",
+    "Confirmou dados gerais para atualização do Cadastro (funcionários, estags./aprendiz, endereço etc)?",
+    "Explorou sobre novas unidades / endereços / grupo de empresas?",
+    "Sugeriu expansão do serviço atual?",
+    "Sugeriu novos negócios (venda de novos serviços)?",
+    "Verificou se é cliente Projeto Crescer? Caso não, apresentou o Projeto?",
+    "Verificou se o cliente sabe e participa do Projeto Turmas Abertas? Caso não, apresentou o Projeto?",
+    "Questionou/orientou e verificou se têm acessado o SG? E se há alguma dúvida?",
+    "Questionou se há alguma indicação para nos passar?",
+    "Comunicação Geral (gíria, gerundismo, vícios de linguagem etc)."
+  ],
+  receptivo:[
+    "Histórico Compatível com a Ligação?",
+    "Se apresentou de forma completa?",
+    "Questionou os dados do cliente para identificar a empresa e evitar duplicidade em sistema?",
+    "Questionou a mídia?",
+    "Se o cliente foi indicado por outra empresa, entendeu com ele se deve falar com algum exec específico?",
+    "Confirmou dados gerais para atualização/cadastro (funcionários, estags./aprendiz, endereço etc)?",
+    "Identificou a necessidade do cliente?",
+    "Serviços apresentados conforme necessidade do cliente?",
+    "Mencionou Sistema Gestor?",
+    "Mencionou Atendimento Personalizado?",
+    "Citou Projeto Crescer e/ou Turmas Abertas?",
+    "Mencionou valor do investimento (seja de estágio e/ou aprendiz)?",
+    "Convidou o cliente para o fechamento?",
+    "Em caso de início de parceria, seguiu os próximos passos (dados para gerar CP, abertura de vaga ou brinde etc)?",
+    "Orientou sobre o processo de regularização do Convênio de Parceria?",
+    "Em caso de brinde, mencionou cobrança integral?",
+    "Contornou objeções?",
+    "Reforçou seus dados para contato?",
+    "Comunicação Geral (gíria, gerundismo, vícios de linguagem etc)."
+  ],
+  apoio:[
+    "Histórico Compatível com a Ligação?",
+    "Se apresentou e deu contexto da ligação?",
+    "Questionou andamento sobre as vagas em aberto?",
+    "Questionou e atualizou faltas e desclassificados?",
+    "Verificou necessidade de negociação do perfil?",
+    "Sugeriu nova data de PS (ou data limite), caso necessário?",
+    "Respeitou prazo de acompanhamento?",
+    "Incentivou uso do SG?",
+    "Comunicação Geral (gíria, gerundismo, vícios de linguagem etc)."
+  ],
+  generico:[
+    "Histórico Compatível com a Ligação?",
+    "Se apresentou de forma clara?",
+    "Deu contexto da ligação?",
+    "Trouxe informações com clareza?",
+    "Contornou alguma objeção do cliente?",
+    "Direcionou próximos passos?",
+    "Encerramento claro e profissional.",
+    "Comunicação Geral (gíria, gerundismo, vícios de linguagem etc)."
+  ]
+};
+
+const MOD_LABEL={relacionamento:'Relacionamento',receptivo:'Receptivo',apoio:'Apoio Administrativo',generico:'Genérico'};
+const statusState={};
+
+function buildCriterios(containerId,prefix,modalidade,statusArr){
+  const c=document.getElementById(containerId);
+  c.innerHTML='';
+  const lista=CRITERIOS[modalidade]||CRITERIOS.relacionamento;
+  lista.forEach((label,i)=>{
+    const id=`${prefix}_${i}`;
+    if(statusArr&&statusArr[i]) statusState[id]=statusArr[i];
+    else if(!statusState[id]) statusState[id]='na';
+    const cur=statusState[id];
+    const div=document.createElement('div');
+    div.className='criterio-row';
+    div.innerHTML=`
+      <div>
+        <div class="criterio-label">${label}</div>
+        <textarea class="criterio-obs-input" id="obs_${id}" rows="2" spellcheck="true" placeholder="Observação (opcional)..."></textarea>
+      </div>
+      <div class="status-group">
+        <button class="sbt${cur==='ok'?' ok':''}"      onclick="setStatus('${id}','ok',this)">✔ Atingido</button>
+        <button class="sbt${cur==='nok'?' nok':''}"    onclick="setStatus('${id}','nok',this)">✘ Não atingido</button>
+        <button class="sbt${cur==='parcial'?' parcial':''}" onclick="setStatus('${id}','parcial',this)">◐ Parcial</button>
+        <button class="sbt${cur==='na'?' na':''}"      onclick="setStatus('${id}','na',this)">● N/A</button>
+      </div>`;
+    c.appendChild(div);
+  });
+}
+
+buildCriterios('criterios1','l1c','relacionamento');
+buildCriterios('criterios2','l2c','relacionamento');
+
+function setStatus(id,val,btn){
+  statusState[id]=val;
+  btn.closest('.status-group').querySelectorAll('.sbt').forEach(b=>b.className='sbt');
+  btn.className=`sbt ${val}`;
+}
+
+function updateScore(p){
+  const v=parseFloat(document.getElementById(`${p}resultado`).value)||0;
+  document.getElementById(`${p}score`).textContent=v.toFixed(1)+'%';
+  document.getElementById(`${p}bar`).style.width=Math.min(v,100)+'%';
+}
+
+/* ── TOAST ── */
+function showToast(msg,type='info'){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className=`toast ${type} show`;
+  setTimeout(()=>t.className='toast',3500);
+}
+
+/* ── DETECTAR MODALIDADE ── */
+function detectMod(text){
+  const u=text.toUpperCase();
+  if(/APOIO\s+ADM/i.test(u)) return 'apoio';
+  if(/RECEPTIVO|APP\s+CHAT|WHATSAPP/i.test(u)) return 'receptivo';
+  if(/GEN[EÉ]RICO/i.test(u)) return 'generico';
+  if(/RELACIONAMENTO/i.test(u)) return 'relacionamento';
+  return 'relacionamento';
+}
+
+/* ── MAPEAR SÍMBOLO → STATUS ── */
+function symToStatus(sym){
+  const s=sym.trim();
+  // ✔ = atingido
+  if(s==='\u2714'||s==='✔') return 'ok';
+  // ✘ = não atingido
+  if(s==='\u2718'||s==='✘') return 'nok';
+  // ⬔ = parcialmente
+  if(s==='\u2B14'||s==='⬔') return 'parcial';
+  // ⬤ = não avaliado
+  if(s==='\u2B24'||s==='⬤') return 'na';
+  return 'na';
+}
+
+/* ── EXTRAIR CRITÉRIOS DO TEXTO ── */
+function extractCriterios(blocoText, numCriterios){
+  // Cada linha que começa com ✔ ✘ ⬔ ⬤ é um critério
+  const lines=blocoText.split('\n');
+  const statusArr=[];
+  const obsArr=[];
+  let lastIdx=-1;
+
+  const statusSymbols=/^[\s\u00A0]*([\u2714\u2718\u2B14\u2B24✔✘⬔⬤])/u;
+
+  lines.forEach(line=>{
+    const m=line.match(statusSymbols);
+    if(m){
+      lastIdx++;
+      statusArr[lastIdx]=symToStatus(m[1]);
+      // Observação na mesma linha após o símbolo (geralmente só o label do critério)
+      obsArr[lastIdx]='';
+    } else if(lastIdx>=0){
+      // Linhas seguintes sem símbolo = observação do critério anterior
+      const trimmed=line.trim();
+      if(trimmed.length>2 &&
+         !/^(Pontos Positivos|Pontos de Melhoria|Pr[oó]xima|PONTOS|LIGAÇÃO|Empresa:|Data)/i.test(trimmed)){
+        obsArr[lastIdx]=(obsArr[lastIdx]?obsArr[lastIdx]+' ':'')+trimmed;
+      }
+    }
+  });
+  return {statusArr,obsArr};
+}
+
+/* ── PARSE PRINCIPAL ── */
+// Recebe dados enviados via postMessage (do Apps Script)
+window.addEventListener('message', function(event){
+  if(event.data && event.data.tipo === 'monitoria_dados' && event.data.texto){
+    document.getElementById('pasteInput').value = event.data.texto;
+    parseText();
+    showToast('✅ Dados carregados automaticamente do Google Docs!','success');
+  }
+});
+
+// Ao carregar a página, verifica se veio texto via URL (?dados=...)
+window.addEventListener('load', function(){
+  const params = new URLSearchParams(window.location.search);
+  const dados = params.get('dados');
+  if(dados && dados.trim()){
+    document.getElementById('pasteInput').value = dados;
+    parseText();
+    showToast('✅ Dados carregados automaticamente do Google Docs!','success');
+  }
+});
+
+function parseText(){
+  const raw=document.getElementById('pasteInput').value;
+  if(!raw.trim()){showToast('Cole o texto do Google Docs primeiro!','error');return;}
+
+  // Normalizar: remover \r
+  const text=raw.replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+
+  /* ── Cabeçalho geral ── */
+  const getField=(patterns)=>{
+    for(const p of patterns){const m=text.match(p);if(m)return m[1].trim();}
+    return '';
+  };
+
+  const colab=getField([/Colaborador:\s*([^\n]+)/i]);
+  const resp =getField([/Aplicado por:\s*([^\n]+)/i,/Respons[aá]vel:\s*([^\n]+)/i]);
+  const dataA=getField([/Data de Aplica[çc][ãa]o:\s*([^\n]+)/i]);
+  // Área/tipo vem da primeira linha "MONITORIA – XXXX"
+  const area =getField([/MONITORIA\s*[–\-]\s*([^\n]+)/i]);
+
+  if(colab) document.getElementById('colaborador').value=colab;
+  if(resp)  document.getElementById('responsavel').value=resp;
+  if(dataA) document.getElementById('dataAplicacao').value=dataA;
+  if(area)  document.getElementById('area').value=area.trim();
+
+  /* ── Dividir blocos de ligação ── */
+  const splitRe=/LIGAÇÃO\s+2(?:\/\d+)?/i;
+  const splitIdx=text.search(splitRe);
+  const bloco1=splitIdx>=0?text.slice(0,splitIdx):text;
+  const bloco2=splitIdx>=0?text.slice(splitIdx):'';
+
+  parseBloco(bloco1,'l1','criterios1','l1c');
+  if(bloco2) parseBloco(bloco2,'l2','criterios2','l2c');
+
+  showToast('✅ Preenchido! Revise os campos e ajuste se necessário.','success');
+}
+
+function parseBloco(bloco,prefix,critId,critPrefix){
+  // Detectar modalidade pelo cabeçalho MONITORIA – XXXX dentro do próprio bloco
+  const modHeader=bloco.match(/MONITORIA\s*[–\-]\s*([^\n]+)/i);
+  const modTexto=modHeader?modHeader[1].trim():'';
+  const mod=detectMod(modTexto||bloco);
+  document.getElementById(`${prefix}modalidade`).value=mod;
+  buildCriterios(critId,critPrefix,mod);
+
+  // Empresa — aceita "Empresa:", "Empresa com ID:", "Empresa (com ID):"
+  const emp=bloco.match(/Empresa(?:\s*\(com\s+ID\)|\s+com\s+ID)?:\s*([^\n]+)/i);
+  if(emp) document.getElementById(`${prefix}empresa`).value=emp[1].trim();
+
+  // Data da ligação
+  const datL=bloco.match(/Data da liga[çc][ãa]o:\s*([^\n]+)/i)
+            ||bloco.match(/Data do contato:\s*([^\n]+)/i)
+            ||bloco.match(/Data:\s*(\d{2}\/\d{2}(?:\/\d{2,4})?)/i);
+  if(datL) document.getElementById(`${prefix}data`).value=datL[1].trim();
+
+  // Histórico — captura tudo entre o rótulo e "Resultado"
+  // Funciona com aspas curvas, retas ou sem aspas, e com múltiplas linhas
+  const histMatch=bloco.match(
+    /(?:Informa[çc][õo]es do hist[oó]rico|Print do hist[oó]rico|Hist[oó]rico)\s*:\s*\n?([\s\S]*?)(?=\n\s*\nResultado|\nResultado|\nRESULTADO)/i
+  );
+  if(histMatch){
+    // Remove aspas curvas/retas do início e fim se existirem
+    const histLimpo=histMatch[1].trim().replace(/^["""]/,'').replace(/["""]$/,'').trim();
+    if(histLimpo) document.getElementById(`${prefix}historico`).value=histLimpo;
+  }
+
+  // Resultado
+  const res=bloco.match(/Resultado da Monitoria:\s*([\d,\.]+)\s*%/i)
+           ||bloco.match(/Resultado:\s*([\d,\.]+)\s*%/i);
+  if(res){
+    document.getElementById(`${prefix}resultado`).value=res[1].replace(',','.');
+    updateScore(prefix);
+  }
+
+  // Extrair critérios com status
+  // Pegar só a seção de CRITÉRIOS ANALISADOS
+  const critSection=bloco.match(/CRIT[EÉ]RIOS ANALISADOS[\s\S]*?(?=Pontos Positivos|Pontos de Melhoria|Pr[oó]xima|$)/i);
+  const critText=critSection?critSection[0]:bloco;
+  const {statusArr,obsArr}=extractCriterios(critText, CRITERIOS[mod].length);
+
+  // Rebuildar critérios com status detectado
+  buildCriterios(critId,critPrefix,mod,statusArr);
+
+  // Preencher observações após build
+  CRITERIOS[mod].forEach((_,i)=>{
+    const obsEl=document.getElementById(`obs_${critPrefix}_${i}`);
+    if(obsEl&&obsArr[i]) obsEl.value=obsArr[i];
+  });
+
+  // Agrupa linhas em itens: linhas com marcador (*•-·) iniciam novo item,
+  // linhas sem marcador são continuação do item anterior (texto longo do Docs).
+  function agruparItens(texto){
+    // Divide por linha em branco (paragrafos) ou por marcador * / • no inicio
+    // Cada paragrafo = um item. Remove o marcador do inicio se houver.
+    const paragrafos=texto.split(/\n\s*\n/);
+    const itens=[];
+    paragrafos.forEach(p=>{
+      // Junta as linhas do paragrafo em uma unica linha
+      const unificado=p.split('\n')
+        .map(l=>l.trim())
+        .filter(l=>l.length>0)
+        .join(' ');
+      if(!unificado) return;
+      // Remove marcador inicial (* • - ·) se houver
+      const limpo=unificado.replace(/^[\s•\-\*·\d\.\)]+\s*/,'').trim();
+      if(limpo.length>2) itens.push(limpo);
+    });
+    return itens;
+  }
+
+  // Pontos Positivos
+  const posMatch=bloco.match(/Pontos Positivos\s*\n([\s\S]*?)(?=Pontos de Melhoria|Pr[oó]xima|LIGAÇÃO|$)/i);
+  if(posMatch){
+    const itens=agruparItens(posMatch[1]);
+    if(itens.length) document.getElementById(`${prefix}positivos`).value=itens.join('\n');
+  }
+
+  // Pontos de Melhoria
+  const melMatch=bloco.match(/Pontos de Melhoria\s*\n([\s\S]*?)(?=Pr[oó]xima|LIGAÇÃO|$)/i);
+  if(melMatch){
+    const itens=agruparItens(melMatch[1]);
+    if(itens.length) document.getElementById(`${prefix}melhorias`).value=itens.join('\n');
+  }
+
+  // Próxima ação prática
+  const acoesMatch=bloco.match(/Pr[oó]xima[s]?\s+a[çc][ãõ][oe]s?\s+pr[aá]tica[s]?\s*\n([\s\S]*?)(?=LIGAÇÃO\s+\d|MONITORIA\s*[–\-]|$)/i);
+  if(acoesMatch){
+    const linhasLixo=/^(MONITORIA|Colaborador:|Data de Aplica|Aplicado por:|LIGAÇÃO)/i;
+    const lines=acoesMatch[1].split('\n')
+      .map(l=>l.trim())
+      .filter(l=>l.length>2 && !linhasLixo.test(l));
+    if(lines.length) document.getElementById(`${prefix}acoes`).value=lines.join('\n');
+  }
+}
+
+/* ══════════════════════════════
+   PDF
+══════════════════════════════ */
+function generatePDF(){
+  const nome=document.getElementById('colaborador').value.trim();
+  if(!nome){showToast('Preencha o nome do colaborador antes de gerar.','error');return;}
+
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const W=210,M=14,CW=W-M*2;
+  let y=0;
+
+  const C={
+    blue:[26,95,168],blueDark:[15,61,110],blueLight:[232,240,251],
+    orange:[245,166,35],
+    green:[39,174,96],red:[231,76,60],amber:[230,150,20],
+    gray:[150,150,155],lgray:[244,245,247],
+    dark:[26,26,46],white:[255,255,255],border:[220,225,232],
+    muted:[100,108,120]
+  };
+
+  const FOOTER_H=12;
+  const PAGE_BOTTOM=297-FOOTER_H-4;
+
+  function drawStripe(){
+    doc.setFillColor(...C.blueDark);doc.rect(0,0,W,3,'F');
+    doc.setFillColor(...C.orange);doc.rect(0,3,W,1,'F');
+  }
+
+  function newPage(){
+    doc.addPage();
+    y=0;
+    // Reproduz exatamente o mesmo cabeçalho da página 1
+    drawStripe();
+    doc.setFillColor(245,247,252);doc.rect(0,4,W,20,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(15);doc.setTextColor(...C.blue);
+    doc.text('CONSOLIDADO DE MONITORIAS',M,15);
+    doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(...C.orange);
+    doc.text('NUBE  •  NÚCLEO BRASILEIRO DE ESTÁGIOS',M,21);
+    y=28;
+  }
+
+  function check(need){if(y+need>PAGE_BOTTOM)newPage();}
+
+  function drawMainHeader(){
+    drawStripe();
+    doc.setFillColor(245,247,252);doc.rect(0,4,W,20,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(15);doc.setTextColor(...C.blue);
+    doc.text('CONSOLIDADO DE MONITORIAS',M,15);
+    doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(...C.orange);
+    doc.text('NUBE  •  NÚCLEO BRASILEIRO DE ESTÁGIOS',M,21);
+    y=28;
+  }
+
+  function drawInfoBox(){
+    const colW=CW/4-4;
+    const cols=[
+      {label:'COLABORADOR(A)',val:document.getElementById('colaborador').value||'—'},
+      {label:'APLICADO POR',  val:document.getElementById('responsavel').value||'—'},
+      {label:'DATA DE APLICAÇÃO',val:document.getElementById('dataAplicacao').value||'—'},
+      {label:'FUNÇÃO',          val:document.getElementById('area').value||'—'}
+    ];
+    doc.setFont('helvetica','bold');doc.setFontSize(8.5);
+    cols.forEach(col=>{ col.lines=doc.splitTextToSize(col.val,colW); });
+    const maxLines=Math.max(...cols.map(c=>c.lines.length));
+    const boxH=10+maxLines*5+4;
+    check(boxH+4);
+    doc.setFillColor(...C.white);doc.setDrawColor(...C.border);doc.setLineWidth(0.3);
+    doc.roundedRect(M,y,CW,boxH,2,2,'FD');
+    cols.forEach((col,i)=>{
+      const x=M+i*(CW/4)+4;
+      doc.setFont('helvetica','bold');doc.setFontSize(6.5);doc.setTextColor(...C.blue);
+      doc.text(col.label,x,y+6);
+      doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(...C.dark);
+      doc.text(col.lines,x,y+13);
+    });
+    y+=boxH+6;
+  }
+
+  function drawLigHeader(title,cor){
+    check(14);
+    doc.setFillColor(...cor);doc.roundedRect(M,y,CW,11,2,2,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(...C.white);
+    doc.text(title.toUpperCase(),M+6,y+7.5);
+    y+=15;
+  }
+
+  function drawContextBox(empresa,dataLig,historico,label){
+    check(12);
+    doc.setFillColor(248,250,255);doc.setDrawColor(...C.border);doc.setLineWidth(0.3);
+    doc.roundedRect(M,y,CW,7,1,1,'FD');
+    doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(...C.blue);
+    doc.text('CONTEXTO OPERACIONAL — '+label.toUpperCase(),M+4,y+5);
+    y+=9;
+
+    const histText=historico?'"'+historico+'"':'Sem histórico registrado.';
+    const histLines=doc.splitTextToSize(histText,CW-14);
+    const bH=Math.max(24, 22+histLines.length*4.2);
+    check(bH+6);
+
+    doc.setFillColor(248,250,255);doc.setDrawColor(...C.border);doc.setLineWidth(0.3);
+    doc.roundedRect(M,y,CW,bH,1,1,'FD');
+    doc.setFillColor(...C.blue);doc.rect(M,y,3,bH,'F');
+
+    doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(...C.dark);
+    doc.text('Empresa:',M+6,y+6);
+    doc.setFont('helvetica','normal');
+    const empLines=doc.splitTextToSize(empresa||'—',CW-30);
+    doc.text(empLines[0],M+22,y+6);
+
+    doc.setFont('helvetica','bold');
+    doc.text('Data da Ligação:',M+6,y+12);
+    doc.setFont('helvetica','normal');
+    doc.text(dataLig||'—',M+35,y+12);
+
+    doc.setFont('helvetica','bold');
+    doc.text('Histórico:',M+6,y+18);
+    doc.setFont('helvetica','italic');doc.setFontSize(7);doc.setTextColor(...C.muted);
+    doc.text(histLines,M+6,y+23);
+    y+=bH+8;
+  }
+
+  function drawResultBanner(pct,num){
+    check(16);
+    doc.setFillColor(...C.orange);doc.roundedRect(M,y,CW,13,2,2,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(14);doc.setTextColor(...C.white);
+    const txt=`RESULTADO LIGAÇÃO ${num}: ${parseFloat(pct||0).toFixed(1).replace('.',',')}%`;
+    doc.text(txt,M+(CW-doc.getTextWidth(txt))/2,y+9.5);
+    y+=17;
+  }
+
+  function drawCriteriosHeader(suffix){
+    check(20);
+    doc.setFillColor(...C.blue);doc.rect(M,y,3,8,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(...C.blue);
+    doc.text('CRITÉRIOS ANALISADOS — '+suffix,M+6,y+6);
+    y+=11;
+    doc.setFillColor(...C.blueLight);doc.rect(M,y,CW,7,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(...C.blue);
+    doc.text('STATUS',M+4,y+4.8);
+    doc.text('INDICADOR DE PERFORMANCE',M+26,y+4.8);
+    y+=9;
+  }
+
+  /* Ícones desenhados com linhas/formas — sem dependência de fonte */
+  function drawIcon(status,cx,cy){
+    const r=2.2;
+    if(status==='ok'){
+      // Visto verde
+      doc.setDrawColor(...C.green);doc.setLineWidth(1.3);
+      doc.line(cx-1.5,cy+0.3,cx,cy+2);
+      doc.line(cx,cy+2,cx+3,cy-1.5);
+    } else if(status==='nok'){
+      // X vermelho
+      doc.setDrawColor(...C.red);doc.setLineWidth(1.3);
+      doc.line(cx-1.5,cy-1.5,cx+1.5,cy+1.5);
+      doc.line(cx+1.5,cy-1.5,cx-1.5,cy+1.5);
+    } else if(status==='parcial'){
+      // Meio círculo laranja
+      doc.setDrawColor(...C.amber);doc.setFillColor(...C.amber);doc.setLineWidth(0.5);
+      doc.circle(cx,cy,r,'D');
+      // Preencher metade direita
+      doc.setFillColor(...C.amber);
+      doc.rect(cx,cy-r,r+0.5,r*2,'F');
+    } else {
+      // Círculo cinza sólido (N/A)
+      doc.setFillColor(...C.gray);
+      doc.circle(cx,cy,r,'F');
+    }
+  }
+
+  function drawCriterioRow(label,status,obs){
+    const TXT_X=M+18;          // x onde o texto começa
+    const TXT_W=CW-18-4;       // largura disponível para texto (até margem direita)
+    const labelLines=doc.splitTextToSize(label,TXT_W);
+    const obsLines=obs?doc.splitTextToSize(obs,TXT_W):[];
+    const contentH=labelLines.length*4.5+(obsLines.length?(obsLines.length*4+3):0);
+    const rH=Math.max(10,contentH+6);
+    check(rH+1);
+
+    doc.setFillColor(...C.white);doc.setDrawColor(...C.border);doc.setLineWidth(0.15);
+    doc.rect(M,y,CW,rH,'FD');
+
+    // Ícone centrado verticalmente
+    drawIcon(status,M+9,y+rH/2);
+
+    // Label
+    doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(...C.dark);
+    doc.text(labelLines,TXT_X,y+5.5);
+
+    // Obs
+    if(obsLines.length){
+      const obsY=y+5.5+labelLines.length*4.5+1;
+      doc.setFont('helvetica','italic');doc.setFontSize(6.8);doc.setTextColor(...C.muted);
+      doc.text(obsLines,TXT_X,obsY);
+    }
+    y+=rH;
+  }
+
+  function drawDestaques(pos,mel,suffix){
+    const posArr=pos.split('\n').filter(l=>l.trim());
+    const melArr=mel.split('\n').filter(l=>l.trim());
+    if(!posArr.length&&!melArr.length) return;
+
+    const half=(CW-4)/2;
+    const TITULO_H=10;
+    const ITEM_LINE=4.5;
+    const ITEM_GAP=3;
+    const PAD_BOTTOM=4;
+
+    function calcItensH(arr,colW){
+      if(!arr.length) return 0;
+      let h=0;
+      arr.forEach(it=>{
+        h+=doc.splitTextToSize('• '+it,colW-8).length*ITEM_LINE+ITEM_GAP;
+      });
+      return h;
+    }
+
+    function calcH(arr,colW){
+      return TITULO_H+calcItensH(arr,colW)+PAD_BOTTOM;
+    }
+
+    function renderItens(arr,x,colW,startY){
+      let iy=startY+TITULO_H;
+      arr.forEach(it=>{
+        const ll=doc.splitTextToSize('• '+it,colW-8);
+        doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(...C.dark);
+        doc.text(ll,x+4,iy);
+        iy+=ll.length*ITEM_LINE+ITEM_GAP;
+      });
+    }
+
+    function splitParaCaber(arr,colW,espacoDisp){
+      const cabe=[],sobra=[];
+      let h=TITULO_H+PAD_BOTTOM;
+      let passou=false;
+      arr.forEach(it=>{
+        if(passou){sobra.push(it);return;}
+        const itemH=doc.splitTextToSize('• '+it,colW-8).length*ITEM_LINE+ITEM_GAP;
+        if(h+itemH<=espacoDisp){h+=itemH;cabe.push(it);}
+        else{passou=true;sobra.push(it);}
+      });
+      return {cabe,sobra};
+    }
+
+    function desenharPar(pArr,mArr,yPos,suf){
+      const ph=calcH(pArr,half);
+      const mh=calcH(mArr,half);
+      const rH=Math.max(ph,mh,TITULO_H+PAD_BOTTOM);
+
+      doc.setFillColor(240,253,244);doc.setDrawColor(187,247,208);doc.setLineWidth(0.3);
+      doc.roundedRect(M,yPos,half,rH,2,2,'FD');
+      doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(22,101,52);
+      doc.text('PONTOS POSITIVOS — '+suf,M+4,yPos+7);
+      renderItens(pArr,M,half,yPos);
+
+      const x2=M+half+4;
+      doc.setFillColor(255,248,230);doc.setDrawColor(253,230,138);doc.setLineWidth(0.3);
+      doc.roundedRect(x2,yPos,half,rH,2,2,'FD');
+      doc.setFont('helvetica','bold');doc.setFontSize(7.5);doc.setTextColor(146,64,14);
+      doc.text('PONTOS DE MELHORIA — '+suf,x2+4,yPos+7);
+      renderItens(mArr,x2,half,yPos);
+
+      return rH;
+    }
+
+    let pRestantes=[...posArr];
+    let mRestantes=[...melArr];
+    let continuacao=false;
+
+    while(pRestantes.length>0||mRestantes.length>0){
+      const espacoDisp=PAGE_BOTTOM-y;
+      const minH=TITULO_H+PAD_BOTTOM+ITEM_LINE+ITEM_GAP;
+
+      if(espacoDisp<minH){
+        newPage();
+        continuacao=true;
+        continue;
+      }
+
+      // Fatia cada coluna pelo espaço disponível
+      const {cabe:pCabe,sobra:pSobra}=splitParaCaber(pRestantes,half,espacoDisp);
+      const {cabe:mCabe,sobra:mSobra}=splitParaCaber(mRestantes,half,espacoDisp);
+
+      if(pCabe.length===0&&mCabe.length===0){
+        newPage();
+        continuacao=true;
+        continue;
+      }
+
+      // Altura real do par = máximo entre as duas colunas
+      const rH=Math.max(calcH(pCabe,half),calcH(mCabe,half),TITULO_H+PAD_BOTTOM);
+
+      // Se a altura real ultrapassar o espaço disponível, refatia usando rH como limite
+      if(rH>espacoDisp){
+        // Refaz o split com o limite sendo o menor lado (para o par caber junto)
+        const limH=Math.min(espacoDisp, rH);
+        const {cabe:p2,sobra:ps2}=splitParaCaber(pRestantes,half,limH);
+        const {cabe:m2,sobra:ms2}=splitParaCaber(mRestantes,half,limH);
+        // Se ainda nada coube, força nova página
+        if(p2.length===0&&m2.length===0){newPage();continuacao=true;continue;}
+        // Verifica se o par resultante cabe
+        const rH2=Math.max(calcH(p2,half),calcH(m2,half),TITULO_H+PAD_BOTTOM);
+        if(rH2>espacoDisp){newPage();continuacao=true;continue;}
+        const suf=continuacao?suffix+' (cont.)':suffix;
+        desenharPar(p2,m2,y,suf);
+        y+=rH2+8;
+        pRestantes=ps2;
+        mRestantes=ms2;
+      } else {
+        const suf=continuacao?suffix+' (cont.)':suffix;
+        desenharPar(pCabe,mCabe,y,suf);
+        y+=rH+8;
+        pRestantes=pSobra;
+        mRestantes=mSobra;
+      }
+
+      if(pRestantes.length>0||mRestantes.length>0){
+        newPage();
+        continuacao=true;
+      }
+    }
+  }
+
+  function drawAcoes(acoes,suffix){
+    if(!acoes.trim()) return;
+    const rawLines=acoes.split('\n').filter(l=>l.trim());
+    if(!rawLines.length) return;
+
+    check(14);
+    // Título da seção com barra azul
+    doc.setFillColor(...C.blue);doc.rect(M,y,3,8,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(...C.blue);
+    doc.text('PRÓXIMA AÇÃO PRÁTICA — '+suffix,M+6,y+5.5);
+    y+=11;
+
+    rawLines.forEach(it=>{
+      const trimmed=it.trim();
+      if(!trimmed) return;
+
+      const isSituacao=/^["""]|^Situa[çc][ãa]o[:\s]/i.test(trimmed);
+      const isResposta=/^Resposta[:\s]/i.test(trimmed);
+
+      if(isSituacao){
+        // Caixa azul claro para situação
+        const textoSit=trimmed.replace(/^["""]|["""]$/g,'').replace(/^Situa[çc][ãa]o[:\s]*/i,'').trim();
+        const ll=doc.splitTextToSize(textoSit,CW-30);
+        const ih=Math.max(10,ll.length*4.5+6);
+        check(ih+2);
+        doc.setFillColor(...C.blueLight);doc.setDrawColor(180,205,240);doc.setLineWidth(0.3);
+        doc.roundedRect(M,y,CW,ih,2,2,'FD');
+        doc.setFillColor(...C.blue);doc.rect(M,y,3,ih,'F');
+        doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(...C.blue);
+        doc.text('Situação:',M+6,y+5);
+        doc.setFont('helvetica','italic');doc.setFontSize(7);doc.setTextColor(...C.dark);
+        doc.text(ll,M+24,y+5);
+        y+=ih+3;
+
+      } else if(isResposta){
+        // Caixa verde para resposta
+        const textoResp=trimmed.replace(/^Resposta[:\s]*/i,'').replace(/^["""]|["""]$/g,'').trim();
+        const ll=doc.splitTextToSize(textoResp,CW-30);
+        const ih=Math.max(10,ll.length*4.5+6);
+        check(ih+2);
+        doc.setFillColor(240,253,244);doc.setDrawColor(187,247,208);doc.setLineWidth(0.3);
+        doc.roundedRect(M,y,CW,ih,2,2,'FD');
+        doc.setFillColor(...C.green);doc.rect(M,y,3,ih,'F');
+        doc.setFont('helvetica','bold');doc.setFontSize(7);doc.setTextColor(22,101,52);
+        doc.text('Resposta:',M+6,y+5);
+        doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(...C.dark);
+        doc.text(ll,M+24,y+5);
+        y+=ih+3;
+
+      } else {
+        // Item normal — caixa cinza clara com bullet azul
+        const ll=doc.splitTextToSize(trimmed,CW-14);
+        const ih=Math.max(10,ll.length*4.5+6);
+        check(ih+2);
+        doc.setFillColor(248,249,252);doc.setDrawColor(...C.border);doc.setLineWidth(0.2);
+        doc.roundedRect(M,y,CW,ih,2,2,'FD');
+        // Bullet laranja
+        doc.setFillColor(...C.orange);doc.circle(M+5,y+ih/2,1.5,'F');
+        doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(...C.dark);
+        doc.text(ll,M+10,y+5);
+        y+=ih+3;
+      }
+    });
+    y+=4;
+  }
+
+  function drawFooter(){
+    const pages=doc.getNumberOfPages();
+    for(let i=1;i<=pages;i++){
+      doc.setPage(i);
+      doc.setFillColor(...C.blueDark);doc.rect(0,285,W,12,'F');
+      doc.setFont('helvetica','italic');doc.setFontSize(7);doc.setTextColor(...C.white);
+      doc.text('Este relatório visa o desenvolvimento contínuo e a excelência no atendimento Nube.',M,291);
+      doc.text(`Pág. ${i} / ${pages}`,W-M-14,291);
+    }
+  }
+
+  /* ── BUILD ── */
+  drawMainHeader();
+  drawInfoBox();
+
+  const l1mod=document.getElementById('l1modalidade').value||'relacionamento';
+  const l1titulo=MOD_LABEL[l1mod];
+  drawLigHeader(`LIGAÇÃO 1/2 — ${l1titulo}`,C.blue);
+  drawContextBox(
+    document.getElementById('l1empresa').value,
+    document.getElementById('l1data').value,
+    document.getElementById('l1historico').value,
+    'LIGAÇÃO 1'
+  );
+  drawResultBanner(document.getElementById('l1resultado').value,'1');
+  drawCriteriosHeader(MOD_LABEL[l1mod].toUpperCase()+' — LIGAÇÃO 1');
+  CRITERIOS[l1mod].forEach((_,i)=>{
+    const id=`l1c_${i}`;
+    drawCriterioRow(CRITERIOS[l1mod][i],statusState[id]||'na',document.getElementById(`obs_${id}`)?.value||'');
+  });
+  y+=6;
+  drawDestaques(document.getElementById('l1positivos').value||'',document.getElementById('l1melhorias').value||'','L1');
+  drawAcoes(document.getElementById('l1acoes').value||'','L1');
+
+  newPage();
+
+  const l2mod=document.getElementById('l2modalidade').value||'relacionamento';
+  const l2titulo=MOD_LABEL[l2mod];
+  drawLigHeader(`LIGAÇÃO 2/2 — ${l2titulo}`,C.orange);
+  drawContextBox(
+    document.getElementById('l2empresa').value,
+    document.getElementById('l2data').value,
+    document.getElementById('l2historico').value,
+    'LIGAÇÃO 2'
+  );
+  drawResultBanner(document.getElementById('l2resultado').value,'2');
+  drawCriteriosHeader(MOD_LABEL[l2mod].toUpperCase()+' — LIGAÇÃO 2');
+  CRITERIOS[l2mod].forEach((_,i)=>{
+    const id=`l2c_${i}`;
+    drawCriterioRow(CRITERIOS[l2mod][i],statusState[id]||'na',document.getElementById(`obs_${id}`)?.value||'');
+  });
+  y+=6;
+  drawDestaques(document.getElementById('l2positivos').value||'',document.getElementById('l2melhorias').value||'','L2');
+  drawAcoes(document.getElementById('l2acoes').value||'','L2');
+
+  drawFooter();
+
+  const nomeArq=nome.replace(/ /g,'_');
+  const dtArq=(document.getElementById('dataAplicacao').value||'sem-data').replace(/\//g,'-');
+  doc.save(`Monitoria_${nomeArq}_${dtArq}.pdf`);
+  showToast('✅ PDF gerado!','success');
+}
+</script>
+</body>
+</html>
